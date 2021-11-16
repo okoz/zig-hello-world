@@ -8,7 +8,7 @@ const Vec2 = struct {
     y: i16,
 };
 
-const Action = enum { exit };
+const Action = enum { exit, left, right, up, down };
 
 const Input = struct {
     input_handle: windows.HANDLE,
@@ -39,7 +39,7 @@ const Input = struct {
     }
 
     pub fn readAction(self: Input) Action {
-        outer: while (true) {
+        while (true) {
             var buffer: [10]windows_extended.INPUT_RECORD = undefined;
             var records_read: windows.DWORD = undefined;
             var buffer_slice = buffer[0..buffer.len];
@@ -47,13 +47,21 @@ const Input = struct {
             for (buffer[0..records_read]) |input_record| {
                 if (input_record.EventType == windows_extended.KEY_EVENT) {
                     const key_event = input_record.DUMMYUNIONNAME.KeyEvent;
-                    if (key_event.bKeyDown != 0 and key_event.wVirtualKeyCode == 0x0d) {
-                        break :outer;
+                    if (key_event.bKeyDown != 0) {
+                        switch (key_event.wVirtualKeyCode) {
+                            0x0d => return Action.exit,
+                            0x57 => return Action.up,
+                            0x53 => return Action.down,
+                            0x41 => return Action.left,
+                            0x44 => return Action.right,
+                            else => {},
+                        }
                     }
                 }
             }
         }
-        windows.WaitForSingleObject(self.input_handle, windows.INFINITE) catch unreachable;
+
+        unreachable;
     }
 };
 
@@ -137,8 +145,6 @@ const Console = struct {
     pub fn clearColor(self: Console) void {
         self.singleParameterCommand('m', 24);
     }
-
-    
 };
 
 pub fn main() anyerror!void {
@@ -164,12 +170,34 @@ pub fn main() anyerror!void {
     console.goto(size.x - 1, 0);
     console.write("X");
 
-    input.wait();
+    var position = Vec2{ .x = 0, .y = 0 };
+    var old_position = position;
 
-    //while (true) {
-    //    if (console.readAction() == Action.exit)
-    //        break;
-    //}
+    main: while (true) {
+        console.goto(old_position.x, old_position.y);
+        console.write(" ");
+        console.goto(position.x, position.y);
+        console.write("@");
+
+        old_position = position;
+
+        switch (input.readAction()) {
+            .exit => break :main,
+            .left => {
+                position.x -= 1;
+            },
+            .right => {
+                position.x += 1;
+            },
+            .up => {
+                position.y -= 1;
+            },
+            .down => {
+                position.y += 1;
+
+            },
+        }
+    }
 
     console.clear();
 }
