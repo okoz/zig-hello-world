@@ -8,19 +8,65 @@ const Vec2 = struct {
     y: i16,
 };
 
+const Action = enum { exit };
+
+const Input = struct {
+    input_handle: windows.HANDLE,
+
+    pub fn init() !Input {
+        const input_handle = try windows.GetStdHandle(windows.STD_INPUT_HANDLE);
+        return Input{
+            .input_handle = input_handle,
+        };
+    }
+
+    pub fn wait(self: Input) void {
+        outer: while (true) {
+            var buffer: [10]windows_extended.INPUT_RECORD = undefined;
+            var records_read: windows.DWORD = undefined;
+            var buffer_slice = buffer[0..buffer.len];
+            _ = windows_extended.ReadConsoleInputA(self.input_handle, buffer_slice, buffer.len, &records_read);
+            for (buffer[0..records_read]) |input_record| {
+                if (input_record.EventType == windows_extended.KEY_EVENT) {
+                    const key_event = input_record.DUMMYUNIONNAME.KeyEvent;
+                    if (key_event.bKeyDown != 0 and key_event.wVirtualKeyCode == 0x0d) {
+                        break :outer;
+                    }
+                }
+            }
+        }
+        windows.WaitForSingleObject(self.input_handle, windows.INFINITE) catch unreachable;
+    }
+
+    pub fn readAction(self: Input) Action {
+        outer: while (true) {
+            var buffer: [10]windows_extended.INPUT_RECORD = undefined;
+            var records_read: windows.DWORD = undefined;
+            var buffer_slice = buffer[0..buffer.len];
+            _ = windows_extended.ReadConsoleInputA(self.input_handle, buffer_slice, buffer.len, &records_read);
+            for (buffer[0..records_read]) |input_record| {
+                if (input_record.EventType == windows_extended.KEY_EVENT) {
+                    const key_event = input_record.DUMMYUNIONNAME.KeyEvent;
+                    if (key_event.bKeyDown != 0 and key_event.wVirtualKeyCode == 0x0d) {
+                        break :outer;
+                    }
+                }
+            }
+        }
+        windows.WaitForSingleObject(self.input_handle, windows.INFINITE) catch unreachable;
+    }
+};
+
 const Console = struct {
     console_handle: windows.HANDLE,
-    console_input: windows.HANDLE,
     saved_mode: windows.DWORD,
 
     pub fn init() !Console {
         const console_handle = try windows.GetStdHandle(windows.STD_OUTPUT_HANDLE);
-        const console_input = try windows.GetStdHandle(windows.STD_INPUT_HANDLE);
         const saved_mode = enableVirtualTerminal(console_handle);
 
         return Console{
             .console_handle = console_handle,
-            .console_input = console_input,
             .saved_mode = saved_mode,
         };
     }
@@ -92,28 +138,14 @@ const Console = struct {
         self.singleParameterCommand('m', 24);
     }
 
-    pub fn wait(self: Console) void {
-        outer: while (true) {
-            var buffer: [10]windows_extended.INPUT_RECORD = undefined;
-            var records_read: windows.DWORD = undefined;
-            var buffer_slice = buffer[0..buffer.len];
-            _ = windows_extended.ReadConsoleInputA(self.console_input, buffer_slice, buffer.len, &records_read);
-            for (buffer[0..records_read]) |input_record| {
-                if (input_record.EventType == windows_extended.KEY_EVENT) { 
-                    const key_event = input_record.DUMMYUNIONNAME.KeyEvent;
-                    if (key_event.bKeyDown != 0 and key_event.wVirtualKeyCode == 0x0d) {
-                        break :outer;
-                    }
-                }
-            }
-        }
-        windows.WaitForSingleObject(self.console_input, windows.INFINITE) catch unreachable;
-    }
+    
 };
 
 pub fn main() anyerror!void {
     const console = try Console.init();
     defer console.deinit();
+
+    const input = try Input.init();
 
     console.clear();
     console.goto(10, 10);
@@ -132,5 +164,12 @@ pub fn main() anyerror!void {
     console.goto(size.x - 1, 0);
     console.write("X");
 
-    console.wait();
+    input.wait();
+
+    //while (true) {
+    //    if (console.readAction() == Action.exit)
+    //        break;
+    //}
+
+    console.clear();
 }
