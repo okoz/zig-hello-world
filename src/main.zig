@@ -1,9 +1,11 @@
 const std = @import("std");
 
-const Console = @import("console.zig").Console;
-const Vec2 = @import("console.zig").Vec2;
-const Input = @import("input.zig").Input;
-const Action = @import("input.zig").Action;
+const console_module = @import("console.zig");
+const Console = console_module.Console;
+const Vec2 = console_module.Vec2;
+const input_module = @import("input.zig");
+const Input = input_module.Input;
+const Action = input_module.Action;
 
 pub fn main() anyerror!void {
     const console = try Console.init();
