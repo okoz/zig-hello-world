@@ -43,11 +43,11 @@ pub const Input = struct {
                     const key_event = input_record.DUMMYUNIONNAME.KeyEvent;
                     if (key_event.bKeyDown != 0) {
                         switch (key_event.wVirtualKeyCode) {
-                            0x0d => return Action.exit,
-                            0x57 => return Action.up,
-                            0x53 => return Action.down,
-                            0x41 => return Action.left,
-                            0x44 => return Action.right,
+                            0x1b => return Action.exit, // ESC
+                            0x26 => return Action.up, // Up Arrow
+                            0x28 => return Action.down, // Down Arrow
+                            0x25 => return Action.left, // Left Arrow
+                            0x27 => return Action.right, // Right Arrow
                             else => {},
                         }
                     }

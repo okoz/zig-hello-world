@@ -88,4 +88,12 @@ pub const Console = struct {
     pub fn clearColor(self: Console) void {
         self.singleParameterCommand('m', 24);
     }
+
+    pub fn setCursorVisible(self: Console, visible: bool) void {
+        if (visible) {
+            self.write("\x1b[?25h");
+        } else {
+            self.write("\x1b[?25l");
+        }
+    }
 };
