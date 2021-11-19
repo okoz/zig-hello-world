@@ -20,7 +20,36 @@ const World = struct {
 const net = std.net;
 const print = std.debug.print;
 
-pub fn main() anyerror! void {
+const TelnetSession = struct {
+    const Command = enum(u8) {
+        SE = 240,
+        NOP = 241,
+        DataMark = 242,
+        Break = 243,
+        InterruptProcess = 244,
+        AbortOutput = 245,
+        AreYouThere = 246,
+        EraseCharacter = 247,
+        EraseLine = 248,
+        GoAhead = 249,
+        SB = 250,
+        WILL = 251,
+        WONT = 252,
+        DO = 253,
+        DONT = 254,
+        IAC = 255,
+        _
+    };
+
+    pub fn decode(data: []u8) void {
+        for (data) |command_byte| {
+            const command = @intToEnum(Command, command_byte);
+            print("{} ", .{ command });
+        }
+    }
+};
+
+pub fn main() anyerror!void {
     const options = net.StreamServer.Options{
         .kernel_backlog = 0,
         .reuse_address = true
@@ -34,9 +63,17 @@ pub fn main() anyerror! void {
 
     while (true) {
         if (server.accept()) |connection| {
+            defer connection.stream.close();
+
             print("Cilent connected from {}\n", .{ connection.address });
+            var buffer: [64]u8 = undefined;
+            const bytes_read = try connection.stream.read(&buffer);
+            
+            print("Read {} bytes:\n", .{ bytes_read });
+            TelnetSession.decode(buffer[0..bytes_read]);
+            print("\n", .{});
+
             _ = try connection.stream.write("Hello, world!");
-            connection.stream.close();
         } else |err| {
             print("Error: {}\n", .{ err });
         }
