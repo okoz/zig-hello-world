@@ -21,65 +21,123 @@ const net = std.net;
 const print = std.debug.print;
 
 const TelnetSession = struct {
-    const Command = enum(u8) {
-        SE = 240,
-        NOP = 241,
-        DataMark = 242,
-        Break = 243,
-        InterruptProcess = 244,
-        AbortOutput = 245,
-        AreYouThere = 246,
-        EraseCharacter = 247,
-        EraseLine = 248,
-        GoAhead = 249,
-        SB = 250,
-        WILL = 251,
-        WONT = 252,
-        DO = 253,
-        DONT = 254,
-        IAC = 255,
-        _
+    const Command = enum(u8) { se = 240, nop = 241, data_mark = 242, brk = 243, interrupt_process = 244, abort_output = 245, are_you_there = 246, erase_character = 247, erase_line = 248, go_ahead = 249, sb = 250, will = 251, wont = 252, do = 253, dont = 254, iac = 255, _ };
+
+    const State = enum(u8) {
+        idle,
+        unexpected_input,
+        eat_command,
+        eat_parameter,
+        eat_subnegotiation_parameter,
+        subnegotiating,
+        eat_subnegotiation_end,
     };
 
-    pub fn decode(data: []u8) void {
-        for (data) |command_byte| {
-            const command = @intToEnum(Command, command_byte);
-            print("{} ", .{ command });
+    state: State,
+
+    pub fn init() TelnetSession {
+        return TelnetSession{ .state = .idle };
+    }
+
+    pub fn decode(self: *TelnetSession, data: []u8) !usize {
+        var write_cursor: usize = 0;
+
+        for (data) |byte| {
+            switch (self.state) {
+                .idle => {
+                    switch (@intToEnum(Command, byte)) {
+                        .iac => {
+                            self.state = .eat_command;
+                        },
+                        else => {
+                            data[write_cursor] = byte;
+                            write_cursor += 1;
+                            self.state = .idle;
+                        },
+                    }
+                },
+                .unexpected_input => {},
+                .eat_command => {
+                    switch (@intToEnum(Command, byte)) {
+                        .nop, .data_mark, .brk, .interrupt_process, .abort_output, .are_you_there, .erase_character, .erase_line, .go_ahead  => {
+                            self.state = .idle;
+                        },
+                        .sb => { self.state = .eat_subnegotiation_parameter; },
+                        .iac, .se => {
+                            self.state = .unexpected_input;
+                        },
+                        .will, .wont, .do, .dont => {
+                            self.state = .eat_parameter;
+                        },
+                        else => {
+                            self.state = .idle;
+                        },
+                    }
+                },
+                .eat_parameter => {
+                    self.state = .idle;
+                },
+                .eat_subnegotiation_parameter => {
+                    self.state = .subnegotiating;
+                },
+                .subnegotiating => {
+                    switch (@intToEnum(Command, byte)) {
+                        .iac => {
+                            self.state = .eat_subnegotiation_end;
+                        },
+                        else => {
+                            self.state = .subnegotiating;
+                        }
+                    }
+                },
+                .eat_subnegotiation_end => {
+                    switch (@intToEnum(Command, byte)) {
+                        .se => {
+                            self.state = .idle;
+                        },
+                        else => {
+                            self.state = .unexpected_input;
+                        }
+                    }
+                }
+            }
         }
+
+        return write_cursor;
     }
 };
 
 pub fn main() anyerror!void {
-    const options = net.StreamServer.Options{
-        .kernel_backlog = 0,
-        .reuse_address = true
-    };
+    const options = net.StreamServer.Options{ .kernel_backlog = 0, .reuse_address = true };
     var server = net.StreamServer.init(options);
     defer server.deinit();
 
     const listen_address = net.Address.parseIp4("0.0.0.0", 23) catch unreachable;
     try server.listen(listen_address);
-    print("Listening on {}\n", .{ listen_address });
+    print("Listening on {}\n", .{listen_address});
 
     while (true) {
         if (server.accept()) |connection| {
             defer connection.stream.close();
+            print("Cilent connected from {}\n", .{connection.address});
 
-            print("Cilent connected from {}\n", .{ connection.address });
-            var buffer: [64]u8 = undefined;
-            const bytes_read = try connection.stream.read(&buffer);
-            
-            print("Read {} bytes:\n", .{ bytes_read });
-            TelnetSession.decode(buffer[0..bytes_read]);
-            print("\n", .{});
+            var telnet_session = TelnetSession.init();
 
-            _ = try connection.stream.write("Hello, world!");
+            while (true) {
+                var buffer: [64]u8 = undefined;
+                const bytes_read = try connection.stream.read(&buffer);
+                //print("Read {} bytes:\n", .{bytes_read});
+
+                const bytes_decoded = try telnet_session.decode(buffer[0..bytes_read]);
+                if (bytes_decoded > 0) {
+                    print("{s}", .{buffer[0..bytes_decoded]});
+                }
+            }
+            //_ = try connection.stream.write("Hello, world!");
         } else |err| {
-            print("Error: {}\n", .{ err });
+            print("Error: {}\n", .{err});
         }
-
     }
-
 }
 //pub fn main() anyerror!void {
 //    const console = try Console.init();
