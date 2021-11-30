@@ -107,6 +107,29 @@ const TelnetSession = struct {
     }
 };
 
+fn processClient(connection: net.StreamServer.Connection) !void {
+    defer connection.stream.close();
+
+    print("Cilent connected from {}\n", .{connection.address});
+
+    var telnet_session = TelnetSession.init();
+
+    while (true) {
+        var buffer: [64]u8 = undefined;
+        const bytes_read = try connection.stream.read(&buffer);
+
+        if (bytes_read == 0) {
+            print("Client disconnected from {}\n", .{connection.address});
+            break;
+        }
+        const bytes_decoded = try telnet_session.decode(buffer[0..bytes_read]);
+        if (bytes_decoded > 0) {
+            print("{s}", .{buffer[0..bytes_decoded]});
+        }
+    }
+
+}
+
 pub fn main() anyerror!void {
     const options = net.StreamServer.Options{ .kernel_backlog = 0, .reuse_address = true };
     var server = net.StreamServer.init(options);
@@ -118,27 +141,9 @@ pub fn main() anyerror!void {
 
     while (true) {
         if (server.accept()) |connection| {
-            defer connection.stream.close();
-            print("Cilent connected from {}\n", .{connection.address});
-
-            var telnet_session = TelnetSession.init();
-
-            while (true) {
-                var buffer: [64]u8 = undefined;
-                const bytes_read = try connection.stream.read(&buffer);
-
-                if (bytes_read == 0) {
-                    print("Client disconnected from {}\n", .{connection.address});
-                    break;
-                }
-                //print("Read {} bytes:\n", .{bytes_read});
-
-                const bytes_decoded = try telnet_session.decode(buffer[0..bytes_read]);
-                if (bytes_decoded > 0) {
-                    print("{s}", .{buffer[0..bytes_decoded]});
-                }
-            }
-            //_ = try connection.stream.write("Hello, world!");
+            _ = async processClient(connection);
+            
+            
         } else |err| {
             print("Error: {}\n", .{err});
         }
