@@ -126,6 +126,11 @@ pub fn main() anyerror!void {
             while (true) {
                 var buffer: [64]u8 = undefined;
                 const bytes_read = try connection.stream.read(&buffer);
+
+                if (bytes_read == 0) {
+                    print("Client disconnected from {}\n", .{connection.address});
+                    break;
+                }
                 //print("Read {} bytes:\n", .{bytes_read});
 
                 const bytes_decoded = try telnet_session.decode(buffer[0..bytes_read]);
