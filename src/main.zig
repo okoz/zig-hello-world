@@ -139,14 +139,24 @@ pub fn main() anyerror!void {
     try server.listen(listen_address);
     print("Listening on {}\n", .{listen_address});
 
+    var heap_allocator = std.heap.HeapAllocator.init();
+    defer heap_allocator.deinit();
+
+    var threads_to_join = std.ArrayList(std.Thread).init(&heap_allocator.allocator);
+
     while (true) {
         if (server.accept()) |connection| {
-            _ = async processClient(connection);
-            
+            var thread = try std.Thread.spawn(.{}, processClient, .{connection});
+            try threads_to_join.append(thread);
+            // _ = async processClient(connection);
             
         } else |err| {
             print("Error: {}\n", .{err});
         }
+    }
+
+    for (threads_to_join) |thread| {
+        thread.join();
     }
 }
 //pub fn main() anyerror!void {
