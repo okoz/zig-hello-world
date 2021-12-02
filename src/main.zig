@@ -155,7 +155,7 @@ pub fn main() anyerror!void {
         }
     }
 
-    for (threads_to_join) |thread| {
+    for (threads_to_join.items) |thread| {
         thread.join();
     }
 }
