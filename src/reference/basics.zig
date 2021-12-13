@@ -68,7 +68,7 @@ test "while with continue" {
 test "while with break" {
     var sum: u8 = 0;
     var i: u8 = 0;
-    while ( i <= 3) : (i += 1) {
+    while (i <= 3) : (i += 1) {
         if (i == 2) break;
         sum += i;
     }
@@ -236,7 +236,7 @@ test "out of bounds, no safety" {
 //}
 
 fn asciiToUpper(x: u8) u8 {
-    return switch(x) {
+    return switch (x) {
         'a'...'z' => x + 'A' - 'a',
         'A'...'Z' => x,
         else => unreachable,
@@ -355,9 +355,7 @@ test "hmm" {
     try expect(Mode.count == 1);
 }
 
-const Vec3 = struct {
-    x: f32, y: f32, z: f32
-};
+const Vec3 = struct { x: f32, y: f32, z: f32 };
 
 test "struct usage" {
     const my_vector = Vec3{
@@ -374,9 +372,7 @@ test "struct usage" {
 //    };
 //}
 
-const Vec4 = struct {
-    x: f32, y: f32, z:f32 = 0, w: f32 = undefined
-};
+const Vec4 = struct { x: f32, y: f32, z: f32 = 0, w: f32 = undefined };
 
 test "struct defaults" {
     const my_vector = Vec4{
@@ -427,7 +423,7 @@ test "switch on tagged union" {
     try expect(value.b == 3);
 }
 
-const Tagged2 = union(enum) { a : u8, b: f32, c: bool, none };
+const Tagged2 = union(enum) { a: u8, b: f32, c: bool, none };
 
 const decimal_int: i32 = 98222;
 const hex_int: u8 = 0xff;
@@ -449,7 +445,7 @@ test "integer widening" {
 
 test "@intCast" {
     const x: u64 = 200;
-    const y =  @intCast(u8, x);
+    const y = @intCast(u8, x);
     try expect(@TypeOf(y) == u8);
 }
 
@@ -486,7 +482,7 @@ test "labelled blocks" {
 
 test "nested continue" {
     var count: usize = 0;
-    outer: for ([_]i32{ 1, 2, 3, 4, 5, 6, 7, 8}) |_| {
+    outer: for ([_]i32{ 1, 2, 3, 4, 5, 6, 7, 8 }) |_| {
         for ([_]i32{ 1, 2, 3, 4, 5 }) |_| {
             count += 1;
             continue :outer;
@@ -676,11 +672,7 @@ test "++" {
 test "**" {
     const pattern = [_]u8{ 0xCC, 0xAA };
     const memory = pattern ** 3;
-    try expect(eql(
-        u8,
-        &memory,
-        &[_]u8{ 0xCC, 0xAA, 0xCC, 0xAA, 0xCC, 0xAA }
-    ));
+    try expect(eql(u8, &memory, &[_]u8{ 0xCC, 0xAA, 0xCC, 0xAA, 0xCC, 0xAA }));
 }
 
 test "optional-if" {
@@ -765,9 +757,9 @@ test "switch capture" {
 }
 
 test "for with pointer capture" {
-    var data = [_]u8{1, 2, 3};
+    var data = [_]u8{ 1, 2, 3 };
     for (data) |*byte| byte.* += 1;
-    try expect(eql(u8, &data, &[_]u8{2, 3, 4}));
+    try expect(eql(u8, &data, &[_]u8{ 2, 3, 4 }));
 }
 
 test "inline for" {

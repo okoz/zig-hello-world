@@ -28,8 +28,7 @@ test "sort" {
     }
 }
 
-
-fn Heap(comptime T: type, key: fn(T) usize) type {
+fn Heap(comptime T: type, key: fn (T) usize) type {
     return struct {
         const Self = @This();
 
@@ -45,7 +44,7 @@ fn Heap(comptime T: type, key: fn(T) usize) type {
                 .allocator = allocator,
             };
         }
-        
+
         pub fn deinit(self: Self) void {
             self.allocator.free(self.heap);
         }
@@ -64,7 +63,7 @@ fn Heap(comptime T: type, key: fn(T) usize) type {
             return (index - 1) / 2;
         }
 
-        fn equal(a : ?usize, b : ?usize) bool {
+        fn equal(a: ?usize, b: ?usize) bool {
             if (a == null and b == null) {
                 return true;
             } else if (a == null or b == null) {
@@ -75,7 +74,7 @@ fn Heap(comptime T: type, key: fn(T) usize) type {
         }
 
         test "parent index" {
-            const Test = struct { index : usize, parent : ?usize };
+            const Test = struct { index: usize, parent: ?usize };
             const results = [_]Test{
                 Test{ .index = 0, .parent = null },
                 Test{ .index = 1, .parent = 0 },
@@ -94,7 +93,7 @@ fn Heap(comptime T: type, key: fn(T) usize) type {
 
         pub fn insert(self: *Self, value: T) !void {
             try maybeGrow(self);
-            var index : ?usize = self.size; 
+            var index: ?usize = self.size;
             self.heap[index.?] = value;
 
             while (index) |index_value| {
@@ -132,5 +131,5 @@ test "heap" {
     try heap.insert(3000);
     try heap.insert(2000);
     try heap.insert(1000);
-    try std.io.getStdOut().writer().print("size {any}\n", .{ heap.heap });
+    try std.io.getStdOut().writer().print("size {any}\n", .{heap.heap});
 }

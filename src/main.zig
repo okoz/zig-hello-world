@@ -161,7 +161,6 @@ pub fn main() anyerror!void {
             var thread = try std.Thread.spawn(.{}, processClient, .{connection, &main_pipe});
             try threads_to_join.append(thread);
             // _ = async processClient(connection);
-            
         } else |err| {
             print("Error: {}\n", .{err});
         }
