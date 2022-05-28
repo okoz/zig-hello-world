@@ -59,10 +59,12 @@ const TelnetSession = struct {
                 .unexpected_input => {},
                 .eat_command => {
                     switch (@intToEnum(Command, byte)) {
-                        .nop, .data_mark, .brk, .interrupt_process, .abort_output, .are_you_there, .erase_character, .erase_line, .go_ahead  => {
+                        .nop, .data_mark, .brk, .interrupt_process, .abort_output, .are_you_there, .erase_character, .erase_line, .go_ahead => {
                             self.state = .idle;
                         },
-                        .sb => { self.state = .eat_subnegotiation_parameter; },
+                        .sb => {
+                            self.state = .eat_subnegotiation_parameter;
+                        },
                         .iac, .se => {
                             self.state = .unexpected_input;
                         },
@@ -87,7 +89,7 @@ const TelnetSession = struct {
                         },
                         else => {
                             self.state = .subnegotiating;
-                        }
+                        },
                     }
                 },
                 .eat_subnegotiation_end => {
@@ -97,9 +99,9 @@ const TelnetSession = struct {
                         },
                         else => {
                             self.state = .unexpected_input;
-                        }
+                        },
                     }
-                }
+                },
             }
         }
 
@@ -127,20 +129,18 @@ fn processClient(connection: net.StreamServer.Connection, _: *std.atomic.Queue(i
             print("{s}", .{buffer[0..bytes_decoded]});
         }
     }
-
 }
 
-fn consoleHandler(dwCtrlType: std.os.windows.DWORD) callconv(.C) std.os.windows.BOOL {
-    if (dwCtrlType == std.os.windows.CTRL_C_EVENT) {
-        print("Got Ctrl-C\n", .{});
+// fn consoleHandler(dwCtrlType: std.os.windows.DWORD) callconv(.C) std.os.windows.BOOL {
+//     if (dwCtrlType == std.os.windows.CTRL_C_EVENT) {
+//         print("Got Ctrl-C\n", .{});
+//     }
 
-    }
-
-    return std.os.windows.TRUE;
-}
+//     return std.os.windows.TRUE;
+// }
 
 pub fn main() anyerror!void {
-    try std.os.windows.SetConsoleCtrlHandler(consoleHandler, true);
+    //try std.os.windows.SetConsoleCtrlHandler(consoleHandler, true);
 
     const options = net.StreamServer.Options{ .kernel_backlog = 0, .reuse_address = true };
     var server = net.StreamServer.init(options);
@@ -150,15 +150,15 @@ pub fn main() anyerror!void {
     try server.listen(listen_address);
     print("Listening on {}\n", .{listen_address});
 
-    var heap_allocator = std.heap.HeapAllocator.init();
-    defer heap_allocator.deinit();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer gpa.deinit();
 
     var main_pipe = std.atomic.Queue(i32).init();
-    var threads_to_join = std.ArrayList(std.Thread).init(&heap_allocator.allocator);
+    var threads_to_join = std.ArrayList(std.Thread).init(&gpa.allocator);
 
     while (true) {
         if (server.accept()) |connection| {
-            var thread = try std.Thread.spawn(.{}, processClient, .{connection, &main_pipe});
+            var thread = try std.Thread.spawn(.{}, processClient, .{ connection, &main_pipe });
             try threads_to_join.append(thread);
             // _ = async processClient(connection);
         } else |err| {
